@@ -78,12 +78,33 @@ function jsonResponse(obj) {
 // =====================================================================
 
 function getSheet(name) {
+  if (!SPREADSHEET_ID || SPREADSHEET_ID === 'YOUR_SPREADSHEET_ID_HERE') {
+    throw new Error('SPREADSHEET_ID가 설정되지 않았습니다. gas_code.gs 상단의 SPREADSHEET_ID를 실제 Google Sheets ID로 교체하고, initializeAll()을 실행해 주세요.');
+  }
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  return ss.getSheetByName(name);
+  const sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    throw new Error('"' + name + '" 시트를 찾을 수 없습니다. GAS 편집기에서 initializeAll() 함수를 한 번 실행해 시트를 생성해 주세요.');
+  }
+  return sheet;
+}
+
+function getSheetSafe(name) {
+  // 시트가 없어도 null을 반환 (크래시 없음)
+  try {
+    if (!SPREADSHEET_ID || SPREADSHEET_ID === 'YOUR_SPREADSHEET_ID_HERE') return null;
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    return ss.getSheetByName(name);
+  } catch(e) {
+    return null;
+  }
 }
 
 function getAllData(sheetName) {
   const sheet = getSheet(sheetName);
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return [];
   const rows = sheet.getDataRange().getValues();
   if (rows.length < 2) return [];
   const headers = rows[0];
@@ -96,7 +117,9 @@ function getAllData(sheetName) {
 
 function appendRow(sheetName, rowObj) {
   const sheet = getSheet(sheetName);
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 1) throw new Error('"' + sheetName + '" 시트에 헤더가 없습니다. initializeAll()을 다시 실행해 주세요.');
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const row = headers.map(h => rowObj[h] !== undefined ? rowObj[h] : '');
   sheet.appendRow(row);
 }
@@ -109,11 +132,15 @@ function getSetting(key) {
 
 function setSetting(key, value) {
   const sheet = getSheet('settings');
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === key) {
-      sheet.getRange(i + 1, 2).setValue(value);
-      return;
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow >= 2 && lastCol >= 1) {
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === key) {
+        sheet.getRange(i + 1, 2).setValue(value);
+        return;
+      }
     }
   }
   sheet.appendRow([key, value]);
@@ -452,6 +479,8 @@ function cancelBooking(params) {
   if (!validateToken(token)) return { success: false, message: '인증이 필요합니다.' };
 
   const sheet = getSheet('bookings');
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { success: false, message: '신청 내역이 없습니다.' };
   const data = sheet.getDataRange().getValues();
 
   for (let i = 1; i < data.length; i++) {
