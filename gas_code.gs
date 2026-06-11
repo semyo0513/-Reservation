@@ -39,7 +39,15 @@ function doGet(e) {
       case 'getBookings':    result = getBookings(params); break;
       case 'getSettings':    result = getSettings(params); break;
       case 'checkBooking':   result = checkBooking(params); break;
-      default: result = { success: false, message: 'action 파라미터가 없거나 잘못되었습니다.' };
+      case 'ping':
+      default:
+        result = {
+          success: true,
+          status: 'ok',
+          message: '체험학습 예약 시스템 GAS 서버가 정상 동작 중입니다.',
+          serverTime: new Date().toISOString(),
+          receivedAction: action || '(없음)'
+        };
     }
     return jsonResponse(result);
   } catch (err) {
@@ -73,7 +81,7 @@ function doPost(e) {
       case 'cancelBooking':   result = cancelBooking(params); break;
       case 'manualBooking':   result = manualBooking(params); break;
       case 'changePassword':  result = changePassword(params); break;
-      default: result = { success: false, message: 'action 파라미터가 없거나 잘못되었습니다.' };
+      default: result = { success: false, message: '알 수 없는 action 값입니다: ' + action };
     }
     return jsonResponse(result);
   } catch (err) {
