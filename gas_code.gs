@@ -1,13 +1,13 @@
 /**
  * 체험학습 프로그램 예약 시스템 - Google Apps Script 백엔드
- * 
+ *
  * [사용 방법]
  * 1. Google Apps Script (script.google.com)에서 새 프로젝트 생성
  * 2. 이 코드 전체를 붙여넣기
  * 3. SPREADSHEET_ID를 실제 Google Sheets ID로 변경
- * 4. 최초 1회 initializeAll() 함수 실행 (시트 구조 + 초기 데이터 생성)
- * 5. 배포 > 웹 앱으로 배포 (액세스: 모든 사용자)
- * 6. 배포된 URL을 index.html의 GAS_URL 상수에 입력
+ * 4. 배포 > 웹 앱으로 배포 (액세스: 모든 사용자)
+ * 5. 배포된 URL을 index.html의 GAS_URL 상수에 입력
+ * → 시트는 웹 앱 최초 접속 시 자동으로 생성됩니다.
  */
 
 // =====================================================================
@@ -16,6 +16,87 @@
 const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE'; // Google Sheets ID로 교체
 const ADMIN_DEFAULT_PASSWORD = 'admin1234';         // 초기 관리자 비밀번호
 const TOKEN_EXPIRE_HOURS = 4;                       // 세션 토큰 만료 시간
+
+// =====================================================================
+// 자동 초기화 (시트 없으면 자동 생성)
+// =====================================================================
+
+let _initialized = false; // 실행 중 캐시플래그
+
+function ensureInitialized() {
+  if (_initialized) return; // 이미 확인한 경우 스킵
+  if (!SPREADSHEET_ID || SPREADSHEET_ID === 'YOUR_SPREADSHEET_ID_HERE') return;
+
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+    // 시트 자동 생성 헬퍼
+    function ensureSheet(name, headers) {
+      let sheet = ss.getSheetByName(name);
+      if (!sheet) {
+        sheet = ss.insertSheet(name);
+        sheet.appendRow(headers);
+        sheet.getRange(1, 1, 1, headers.length)
+          .setBackground('#4a90d9')
+          .setFontColor('#ffffff')
+          .setFontWeight('bold');
+        Logger.log('✅ 시트 생성: ' + name);
+      }
+      return sheet;
+    }
+
+    ensureSheet('programs',  ['id','name','date','targetClasses','capacity','createdAt']);
+    ensureSheet('bookings',  ['id','grade','classNum','studentNum','studentName','programId','bookedAt']);
+    const settingsSheet = ensureSheet('settings', ['key','value']);
+
+    // settings 시트가 헤더만 있는 경우 초기값 삽입
+    if (settingsSheet.getLastRow() < 2) {
+      const initialSettings = [
+        ['adminPasswordHash', sha256(ADMIN_DEFAULT_PASSWORD)],
+        ['openTime_2025-06-30', ''],
+        ['openTime_2025-07-01', ''],
+        ['openTime_2025-07-02', ''],
+        ['forceOpen_2025-06-30',  'false'],
+        ['forceOpen_2025-07-01',  'false'],
+        ['forceOpen_2025-07-02',  'false'],
+        ['forceClose_2025-06-30', 'false'],
+        ['forceClose_2025-07-01', 'false'],
+        ['forceClose_2025-07-02', 'false'],
+        ['sessionToken',  ''],
+        ['sessionExpire', '']
+      ];
+      initialSettings.forEach(row => settingsSheet.appendRow(row));
+      Logger.log('✅ settings 초기값 삽입 완료');
+    }
+
+    // programs 시트가 헤더만 있는 경우 초기 프로그램 삽입
+    const programsSheet = ss.getSheetByName('programs');
+    if (programsSheet && programsSheet.getLastRow() < 2) {
+      const now = new Date().toISOString();
+      const initialPrograms = [
+        ['p001', '전동 선풍기 조립',               '2025-06-30', '1,4,7', 30, now],
+        ['p002', '조립 드론 만들기',               '2025-06-30', '1,4,7', 30, now],
+        ['p003', '미래 자동차와 코딩',             '2025-06-30', '1,4,7', 30, now],
+        ['p004', '디지털 굿즈 디자인',             '2025-06-30', '1,4,7', 30, now],
+        ['p005', 'AI캐릭터 포토카드 디자인 체험', '2025-07-01', '2,5,8', 30, now],
+        ['p006', '버튼 제어형 Arduino 개발 실습',   '2025-07-01', '2,5,8', 30, now],
+        ['p007', '휴먼로봇 제작을 위한 코딩',     '2025-07-01', '2,5,8', 30, now],
+        ['p008', '3D프린팅 메이커 제작 체험',     '2025-07-01', '2,5,8', 30, now],
+        ['p009', '솟폼 제작을 위한 드론 활용',   '2025-07-01', '2,5,8', 30, now],
+        ['p010', '공유압제어 체험',                 '2025-07-02', '3,6,9', 30, now],
+        ['p011', '미래 자동차를 만드는 3차원 측정',   '2025-07-02', '3,6,9', 30, now],
+        ['p012', 'MBTI 함수만들기',                 '2025-07-02', '3,6,9', 30, now],
+        ['p013', '드론 비행 기초 입문',               '2025-07-02', '3,6,9', 30, now]
+      ];
+      initialPrograms.forEach(row => programsSheet.appendRow(row));
+      Logger.log('✅ 프로그램 ' + initialPrograms.length + '개 삽입 완료');
+    }
+
+    _initialized = true;
+  } catch (err) {
+    Logger.log('❌ ensureInitialized 실패: ' + err.message);
+  }
+}
 
 // =====================================================================
 // 진입점
@@ -29,6 +110,7 @@ function doGet(e) {
       message: 'doGet은 웹 앱으로 배포 후 브라우저/fetch로 호출해야 합니다. 편집기에서 직접 실행하지 마세요.'
     });
   }
+  ensureInitialized(); // ← 시트 없으면 자동 생성
   const params = e.parameter;
   const action = params.action || '';
   try {
@@ -63,6 +145,7 @@ function doPost(e) {
       message: 'doPost는 웹 앱으로 배포 후 POST 요청으로 호출해야 합니다.'
     });
   }
+  ensureInitialized(); // ← 시트 없으면 자동 생성
   let params;
   try {
     params = JSON.parse(e.postData.contents);
