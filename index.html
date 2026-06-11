@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>체험학습 프로그램 예약 시스템</title>
+<meta name="description" content="학년·반별 체험학습 프로그램 선택 신청을 온라인으로 처리하는 예약 시스템입니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ========== CSS 변수 ========== */
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card: #1a2235;
+  --bg-card-hover: #1e2a42;
+  --bg-glass: rgba(26, 34, 53, 0.85);
+  --accent-primary: #3b82f6;
+  --accent-secondary: #60a5fa;
+  --accent-glow: rgba(59, 130, 246, 0.3);
+  --accent-cyan: #22d3ee;
+  --accent-purple: #a78bfa;
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.15);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.15);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(59, 130, 246, 0.5);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 30px rgba(59,130,246,0.2);
+  --transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+  --font: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ========== 기본 리셋 ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ========== 배경 애니메이션 ========== */
+.bg-orbs {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+}
+.bg-orb {
+  position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.15; animation: orbFloat 12s ease-in-out infinite;
+}
+.bg-orb-1 { width: 400px; height: 400px; background: var(--accent-primary); top: -100px; left: -100px; animation-delay: 0s; }
+.bg-orb-2 { width: 300px; height: 300px; background: var(--accent-cyan); bottom: -80px; right: -80px; animation-delay: 4s; }
+.bg-orb-3 { width: 250px; height: 250px; background: var(--accent-purple); top: 50%; left: 50%; transform: translate(-50%,-50%); animation-delay: 8s; }
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0,0) scale(1); }
+  33% { transform: translate(30px,-20px) scale(1.05); }
+  66% { transform: translate(-20px,30px) scale(0.95); }
+}
+
+/* ========== 앱 컨테이너 ========== */
+#app { position: relative; z-index: 1; min-height: 100vh; }
+
+/* ========== 헤더 ========== */
+.app-header {
+  background: rgba(10, 14, 26, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-logo {
+  display: flex; align-items: center; gap: 10px;
+}
+.header-logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-cyan));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  box-shadow: var(--shadow-glow);
+}
+.header-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.header-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.admin-btn {
+  width: 40px; height: 40px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  transition: var(--transition);
+  color: var(--text-secondary);
+}
+.admin-btn:hover { background: var(--bg-card-hover); color: var(--accent-secondary); border-color: var(--border-focus); }
+
+/* ========== 메인 컨텐츠 ========== */
+.main-content {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 24px 16px 100px;
+}
+
+/* ========== 뷰 전환 ========== */
+.view { display: none; animation: fadeIn 0.3s ease; }
+.view.active { display: block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* ========== 섹션 카드 ========== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+.card:hover { border-color: rgba(255,255,255,0.12); box-shadow: var(--shadow-md); }
+
+/* ========== 섹션 타이틀 ========== */
+.section-title {
+  font-size: 18px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 6px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title .icon { font-size: 20px; }
+.section-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; }
+
+/* ========== 폼 요소 ========== */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-label {
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.form-control {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-family: var(--font);
+  font-size: 15px;
+  color: var(--text-primary);
+  outline: none;
+  transition: var(--transition);
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.form-control:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  background: rgba(17, 24, 39, 0.8);
+}
+.form-control::placeholder { color: var(--text-muted); }
+select.form-control {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  padding-right: 40px;
+  cursor: pointer;
+}
+select.form-control option { background: var(--bg-secondary); }
+
+/* ========== 버튼 ========== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 24px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; border: none; outline: none;
+  transition: var(--transition);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), #2563eb);
+  color: #fff;
+  box-shadow: 0 4px 15px var(--accent-glow);
+}
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--accent-glow);
+}
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: var(--bg-card-hover); border-color: rgba(255,255,255,0.15); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #dc2626; transform: translateY(-1px); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #059669; transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text-primary); background: var(--bg-card); }
+.btn-sm { padding: 8px 14px; font-size: 13px; }
+.btn-full { width: 100%; }
+.btn-icon { width: 34px; height: 34px; padding: 0; border-radius: 8px; }
+
+/* ========== 배지 ========== */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.badge-full { background: var(--danger-bg); color: var(--danger); }
+.badge-open { background: var(--success-bg); color: var(--success); }
+.badge-soon { background: var(--warning-bg); color: var(--warning); }
+
+/* ========== 프로그레스 바 ========== */
+.progress-wrap { margin-top: 8px; }
+.progress-info {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;
+}
+.progress-bar {
+  height: 6px; background: rgba(255,255,255,0.08); border-radius: 99px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; border-radius: 99px;
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+.progress-fill.green { background: linear-gradient(90deg, var(--success), #34d399); }
+.progress-fill.yellow { background: linear-gradient(90deg, var(--warning), #fbbf24); }
+.progress-fill.red { background: linear-gradient(90deg, var(--danger), #f87171); }
+
+/* ========== 프로그램 카드 ========== */
+.program-list { display: flex; flex-direction: column; gap: 12px; }
+.program-card {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.program-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-cyan));
+  transform: scaleX(0); transition: var(--transition); transform-origin: left;
+}
+.program-card:hover:not(.disabled)::before { transform: scaleX(1); }
+.program-card:hover:not(.disabled) {
+  border-color: var(--border-focus);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+}
+.program-card.selected {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.08);
+  box-shadow: 0 0 0 1px var(--accent-primary), var(--shadow-glow);
+}
+.program-card.selected::before { transform: scaleX(1); }
+.program-card.disabled {
+  opacity: 0.55; cursor: not-allowed;
+  border-color: rgba(255,255,255,0.04);
+}
+.program-card-header {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+}
+.program-name { font-size: 15px; font-weight: 600; color: var(--text-primary); line-height: 1.4; }
+.program-check {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--transition);
+}
+.program-card.selected .program-check {
+  background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; font-size: 13px;
+}
+
+/* ========== 카운트다운 ========== */
+.countdown-wrap {
+  text-align: center; padding: 40px 20px;
+}
+.countdown-icon { font-size: 56px; margin-bottom: 16px; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+.countdown-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.countdown-desc { font-size: 14px; color: var(--text-secondary); margin-bottom: 28px; }
+.countdown-timer {
+  display: flex; gap: 12px; justify-content: center; align-items: center;
+}
+.countdown-unit {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  text-align: center;
+}
+.countdown-num {
+  font-size: 36px; font-weight: 800; line-height: 1;
+  background: linear-gradient(135deg, var(--accent-secondary), var(--accent-cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-variant-numeric: tabular-nums;
+}
+.countdown-label { font-size: 10px; color: var(--text-muted); margin-top: 4px; font-weight: 600; letter-spacing: 0.1em; }
+.countdown-sep { font-size: 28px; font-weight: 800; color: var(--text-muted); margin-bottom: 16px; }
+
+/* ========== 완료 화면 ========== */
+.success-wrap { text-align: center; padding: 32px 16px; }
+.success-icon-wrap {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: var(--success-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; margin: 0 auto 20px;
+  animation: scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes scaleIn { from { transform: scale(0); opacity:0; } to { transform: scale(1); opacity:1; } }
+.success-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; color: var(--success); }
+.success-desc { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; }
+.booking-summary {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: left; margin-bottom: 24px;
+}
+.booking-summary-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.booking-summary-row:last-child { border-bottom: none; }
+.booking-summary-key { color: var(--text-secondary); }
+.booking-summary-value { font-weight: 600; color: var(--text-primary); }
+
+/* ========== 알림 메시지 ========== */
+.alert {
+  padding: 14px 16px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 500;
+  display: flex; align-items: flex-start; gap: 10px;
+  margin-bottom: 16px;
+}
+.alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.alert-info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25); color: var(--accent-secondary); }
+.alert-success { background: var(--success-bg); border: 1px solid rgba(16,185,129,0.25); color: var(--success); }
+.alert-danger { background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.25); color: var(--danger); }
+.alert-warning { background: var(--warning-bg); border: 1px solid rgba(245,158,11,0.25); color: var(--warning); }
+
+/* ========== 모달 ========== */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-sheet {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 28px 24px 40px;
+  width: 100%; max-width: 540px;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.34,1.2,0.64,1);
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+.modal-handle {
+  width: 36px; height: 4px; background: var(--border);
+  border-radius: 2px; margin: 0 auto 24px;
+}
+.modal-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.modal-desc { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-actions .btn { flex: 1; }
+
+/* ========== 로딩 스피너 ========== */
+.spinner {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(10,14,26,0.85);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+}
+.loading-overlay.active { opacity: 1; pointer-events: all; }
+.loading-text { font-size: 14px; color: var(--text-secondary); }
+.spinner-lg {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 3px solid rgba(59,130,246,0.2);
+  border-top-color: var(--accent-primary);
+  animation: spin 0.8s linear infinite;
+}
+
+/* ========== 토스트 알림 ========== */
+#toast-container {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  z-index: 400; display: flex; flex-direction: column; gap: 8px; align-items: center;
+  pointer-events: none;
+}
+.toast {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  font-size: 14px; font-weight: 500;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: var(--shadow-lg);
+  animation: toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  white-space: nowrap;
+  max-width: calc(100vw - 40px);
+  white-space: normal;
+}
+.toast.success { border-color: rgba(16,185,129,0.4); color: var(--success); }
+.toast.error { border-color: rgba(239,68,68,0.4); color: var(--danger); }
+.toast.info { border-color: rgba(59,130,246,0.4); color: var(--accent-secondary); }
+@keyframes toastIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+@keyframes toastOut { to { opacity:0; transform:translateY(20px); } }
+
+/* ========== 구분선 ========== */
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+/* ========== 태그 ========== */
+.tag {
+  display: inline-block; padding: 3px 10px;
+  background: rgba(59,130,246,0.12); color: var(--accent-secondary);
+  border-radius: 6px; font-size: 12px; font-weight: 600;
+}
+
+/* ========== 관리자 패널 ========== */
+.admin-tabs {
+  display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px;
+  margin-bottom: 20px; scrollbar-width: none;
+}
+.admin-tabs::-webkit-scrollbar { display: none; }
+.admin-tab {
+  flex-shrink: 0; padding: 9px 18px;
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-family: var(--font);
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  cursor: pointer; transition: var(--transition); white-space: nowrap;
+}
+.admin-tab:hover { color: var(--text-primary); background: var(--bg-card-hover); }
+.admin-tab.active {
+  background: linear-gradient(135deg, var(--accent-primary), #2563eb);
+  color: #fff; border-color: transparent;
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+/* ========== 테이블 ========== */
+.table-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.data-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.data-table th {
+  background: rgba(255,255,255,0.04); padding: 10px 12px;
+  text-align: left; font-size: 11px; font-weight: 700;
+  color: var(--text-secondary); letter-spacing: 0.08em; text-transform: uppercase;
+  white-space: nowrap; border-bottom: 1px solid var(--border);
+}
+.data-table td {
+  padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--text-primary); white-space: nowrap;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ========== 통계 카드 ========== */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.stat-card {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 16px;
+  text-align: center;
+}
+.stat-num { font-size: 28px; font-weight: 800; color: var(--accent-secondary); }
+.stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+/* ========== 설정 토글 ========== */
+.toggle-wrap { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.toggle-wrap:last-child { border-bottom: none; }
+.toggle-info { display: flex; flex-direction: column; gap: 2px; }
+.toggle-label { font-size: 14px; font-weight: 600; }
+.toggle-desc { font-size: 12px; color: var(--text-muted); }
+.toggle {
+  position: relative; width: 44px; height: 24px; flex-shrink: 0;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0; background: var(--bg-secondary);
+  border: 1px solid var(--border); border-radius: 12px; cursor: pointer;
+  transition: var(--transition);
+}
+.toggle-slider::before {
+  content: ''; position: absolute; width: 18px; height: 18px;
+  left: 2px; top: 50%; transform: translateY(-50%);
+  background: var(--text-muted); border-radius: 50%; transition: var(--transition);
+}
+.toggle input:checked + .toggle-slider { background: var(--accent-primary); border-color: var(--accent-primary); }
+.toggle input:checked + .toggle-slider::before { transform: translate(20px, -50%); background: #fff; }
+
+/* ========== 빈 상태 ========== */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state-text { font-size: 14px; }
+
+/* ========== 반응형 ========== */
+@media (max-width: 400px) {
+  .countdown-num { font-size: 28px; }
+  .countdown-unit { padding: 12px 14px; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .form-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ========== 스크롤바 ========== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ========== 입력 조회 화면 특이 스타일 ========== */
+.lookup-card {
+  background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(34,211,238,0.05));
+  border: 1px solid rgba(59,130,246,0.2);
+}
+
+/* ========== 페이지 타이틀 ========== */
+.page-hero { text-align: center; padding: 28px 0 8px; }
+.page-hero-title {
+  font-size: 26px; font-weight: 800;
+  background: linear-gradient(135deg, #f1f5f9, var(--accent-secondary));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; margin-bottom: 6px;
+}
+.page-hero-desc { font-size: 14px; color: var(--text-secondary); }
+
+/* ========== 날짜 칩 ========== */
+.date-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(34,211,238,0.1); color: var(--accent-cyan);
+  border: 1px solid rgba(34,211,238,0.2);
+  border-radius: 20px; padding: 4px 12px;
+  font-size: 13px; font-weight: 600;
+  margin-bottom: 16px;
+}
+
+/* ========== 입력 조회 날짜 정보 ========== */
+.class-info-bar {
+  background: linear-gradient(90deg, rgba(59,130,246,0.1), rgba(34,211,238,0.05));
+  border: 1px solid rgba(59,130,246,0.2);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--accent-secondary);
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ========== 완료 화면 조회 버튼 ========== */
+.lookup-wrap { margin-top: 24px; }
+.lookup-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+.lookup-form { display: flex; gap: 8px; }
+.lookup-form .form-control { flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- 배경 Orbs -->
+<div class="bg-orbs">
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+</div>
+
+<!-- 로딩 오버레이 -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner-lg"></div>
+  <div class="loading-text" id="loading-text">잠시 기다려주세요...</div>
+</div>
+
+<!-- 토스트 컨테이너 -->
+<div id="toast-container"></div>
+
+<!-- 앱 -->
+<div id="app">
+
+  <!-- 헤더 -->
+  <header class="app-header">
+    <div class="header-logo" style="cursor:pointer" onclick="goHome()">
+      <div class="header-logo-icon">🔬</div>
+      <div>
+        <div class="header-title">체험학습 예약</div>
+        <div class="header-subtitle">프로그램 신청 시스템</div>
+      </div>
+    </div>
+    <button class="admin-btn" id="admin-lock-btn" onclick="openAdminModal()" title="관리자 패널">🔐</button>
+  </header>
+
+  <!-- 메인 컨텐츠 -->
+  <main class="main-content">
+
+    <!-- ===================== 학생 신청 뷰 ===================== -->
+    <div class="view active" id="view-student">
+
+      <div class="page-hero">
+        <div class="page-hero-title">체험학습 프로그램 예약</div>
+        <div class="page-hero-desc">학년·반·번호·이름을 입력하고 프로그램을 선택하세요</div>
+      </div>
+
+      <!-- 정보 입력 카드 -->
+      <div class="card" id="input-card">
+        <div class="section-title"><span class="icon">✏️</span> 학생 정보 입력</div>
+        <div class="section-desc">해당 반의 프로그램 목록을 불러옵니다.</div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="sel-grade">학년</label>
+            <select class="form-control" id="sel-grade" onchange="onClassChange()">
+              <option value="">선택</option>
+              <option value="1">1학년</option>
+              <option value="2">2학년</option>
+              <option value="3">3학년</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sel-class">반</label>
+            <select class="form-control" id="sel-class" onchange="onClassChange()">
+              <option value="">선택</option>
+              <option value="1">1반</option>
+              <option value="2">2반</option>
+              <option value="3">3반</option>
+              <option value="4">4반</option>
+              <option value="5">5반</option>
+              <option value="6">6반</option>
+              <option value="7">7반</option>
+              <option value="8">8반</option>
+              <option value="9">9반</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inp-num">번호</label>
+            <input class="form-control" id="inp-num" type="number" min="1" max="40" placeholder="1 ~ 40">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inp-name">이름</label>
+            <input class="form-control" id="inp-name" type="text" placeholder="홍길동" maxlength="5">
+          </div>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <button class="btn btn-primary btn-full" id="btn-load" onclick="loadPrograms()">
+            <span>프로그램 불러오기</span>
+            <span>→</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 프로그램 목록 -->
+      <div id="programs-section" style="display:none">
+
+        <!-- 클래스 정보 바 -->
+        <div class="class-info-bar" id="class-info-bar">📅 로딩 중...</div>
+
+        <!-- 카운트다운 (오픈 전) -->
+        <div class="card" id="countdown-card" style="display:none">
+          <div class="countdown-wrap">
+            <div class="countdown-icon">⏰</div>
+            <div class="countdown-title">예매 오픈 전입니다</div>
+            <div class="countdown-desc" id="countdown-open-time">오픈 예정 시각을 확인 중입니다...</div>
+            <div class="countdown-timer" id="countdown-timer">
+              <div class="countdown-unit">
+                <div class="countdown-num" id="cd-h">00</div>
+                <div class="countdown-label">시간</div>
+              </div>
+              <div class="countdown-sep">:</div>
+              <div class="countdown-unit">
+                <div class="countdown-num" id="cd-m">00</div>
+                <div class="countdown-label">분</div>
+              </div>
+              <div class="countdown-sep">:</div>
+              <div class="countdown-unit">
+                <div class="countdown-num" id="cd-s">00</div>
+                <div class="countdown-label">초</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 마감 안내 -->
+        <div class="card" id="closed-card" style="display:none">
+          <div class="countdown-wrap">
+            <div class="countdown-icon">🔒</div>
+            <div class="countdown-title">예매가 마감되었습니다</div>
+            <div class="countdown-desc">해당 날짜의 프로그램 신청이 종료되었습니다.</div>
+          </div>
+        </div>
+
+        <!-- 프로그램 선택 카드 -->
+        <div class="card" id="program-list-card" style="display:none">
+          <div class="section-title"><span class="icon">🎯</span> 프로그램 선택</div>
+          <div class="section-desc">원하는 프로그램 1개를 선택하세요. (정원 마감 시 선택 불가)</div>
+          <div class="program-list" id="program-list"></div>
+          <div style="margin-top: 20px;">
+            <button class="btn btn-primary btn-full" id="btn-submit" onclick="openConfirmModal()" disabled>
+              신청하기
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 신청 조회 카드 -->
+      <div class="card lookup-card" id="lookup-section">
+        <div class="section-title"><span class="icon">🔍</span> 신청 내역 조회</div>
+        <div class="section-desc">학년·반·번호를 입력해 이미 신청한 내역을 확인할 수 있습니다.</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="lk-grade">학년</label>
+            <select class="form-control" id="lk-grade">
+              <option value="">선택</option>
+              <option value="1">1학년</option>
+              <option value="2">2학년</option>
+              <option value="3">3학년</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="lk-class">반</label>
+            <select class="form-control" id="lk-class">
+              <option value="">선택</option>
+              <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option>
+              <option value="4">4반</option><option value="5">5반</option><option value="6">6반</option>
+              <option value="7">7반</option><option value="8">8반</option><option value="9">9반</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label class="form-label" for="lk-num">번호</label>
+            <div style="display:flex;gap:8px">
+              <input class="form-control" id="lk-num" type="number" min="1" max="40" placeholder="번호 입력" style="flex:1">
+              <button class="btn btn-secondary" onclick="lookupBooking()">조회</button>
+            </div>
+          </div>
+        </div>
+        <div id="lookup-result" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- ===================== 신청 완료 뷰 ===================== -->
+    <div class="view" id="view-complete">
+      <div class="card">
+        <div class="success-wrap">
+          <div class="success-icon-wrap">✅</div>
+          <div class="success-title">신청 완료!</div>
+          <div class="success-desc">체험학습 프로그램 신청이 완료되었습니다.</div>
+          <div class="booking-summary" id="complete-summary"></div>
+          <button class="btn btn-secondary btn-full" onclick="goHome()">← 처음으로 돌아가기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== 관리자 뷰 ===================== -->
+    <div class="view" id="view-admin">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px">
+        <div>
+          <div style="font-size:20px;font-weight:800">관리자 패널</div>
+          <div style="font-size:13px;color:var(--text-muted)">체험학습 예약 관리 시스템</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="adminLogout()">로그아웃</button>
+      </div>
+
+      <!-- 관리자 탭 -->
+      <div class="admin-tabs">
+        <button class="admin-tab active" id="tab-dashboard" onclick="switchAdminTab('dashboard')">📊 대시보드</button>
+        <button class="admin-tab" id="tab-programs" onclick="switchAdminTab('programs')">📋 프로그램 관리</button>
+        <button class="admin-tab" id="tab-bookings" onclick="switchAdminTab('bookings')">👥 신청 내역</button>
+        <button class="admin-tab" id="tab-settings" onclick="switchAdminTab('settings')">⚙️ 설정</button>
+      </div>
+
+      <!-- 대시보드 탭 -->
+      <div id="admin-tab-dashboard">
+        <div class="stat-grid" id="stat-grid"></div>
+        <div class="card">
+          <div class="section-title"><span class="icon">📈</span> 프로그램별 신청 현황</div>
+          <div id="program-stats-list"></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div class="section-title" style="margin-bottom:0"><span class="icon">📋</span> 신청 목록</div>
+            <button class="btn btn-secondary btn-sm" onclick="exportCSV()">CSV 내보내기</button>
+          </div>
+          <div class="table-wrap" id="dashboard-table-wrap">
+            <div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">데이터를 불러오는 중...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 프로그램 관리 탭 -->
+      <div id="admin-tab-programs" style="display:none">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div class="section-title" style="margin-bottom:0"><span class="icon">➕</span> 프로그램 추가</div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label class="form-label">프로그램명</label>
+              <input class="form-control" id="new-prog-name" type="text" placeholder="프로그램 이름 입력">
+            </div>
+            <div class="form-group">
+              <label class="form-label">날짜</label>
+              <select class="form-control" id="new-prog-date">
+                <option value="2025-06-30">6월 30일</option>
+                <option value="2025-07-01">7월 1일</option>
+                <option value="2025-07-02">7월 2일</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">정원</label>
+              <input class="form-control" id="new-prog-capacity" type="number" min="1" placeholder="30">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">대상 반 (쉼표 구분, 예: 1,4,7)</label>
+              <input class="form-control" id="new-prog-classes" type="text" placeholder="1,4,7">
+            </div>
+          </div>
+          <div style="margin-top:16px">
+            <button class="btn btn-primary" onclick="addProgram()">프로그램 추가</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-title" style="margin-bottom:16px"><span class="icon">📋</span> 프로그램 목록</div>
+          <div id="admin-program-list"></div>
+        </div>
+      </div>
+
+      <!-- 신청 내역 탭 -->
+      <div id="admin-tab-bookings" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="section-title" style="margin-bottom:16px"><span class="icon">➕</span> 수동 신청 추가</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">학년</label>
+              <select class="form-control" id="manual-grade">
+                <option value="">선택</option>
+                <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">반</label>
+              <select class="form-control" id="manual-class">
+                <option value="">선택</option>
+                <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option>
+                <option value="4">4반</option><option value="5">5반</option><option value="6">6반</option>
+                <option value="7">7반</option><option value="8">8반</option><option value="9">9반</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">번호</label>
+              <input class="form-control" id="manual-num" type="number" min="1" max="40" placeholder="번호">
+            </div>
+            <div class="form-group">
+              <label class="form-label">이름</label>
+              <input class="form-control" id="manual-name" type="text" placeholder="홍길동" maxlength="5">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">프로그램</label>
+              <select class="form-control" id="manual-program"></select>
+            </div>
+          </div>
+          <div style="margin-top:16px">
+            <button class="btn btn-primary" onclick="submitManual()">수동 신청 추가</button>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+            <div class="section-title" style="margin-bottom:0"><span class="icon">👥</span> 전체 신청 내역</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="form-control" id="search-booking" type="text" placeholder="이름 검색..." style="width:140px;padding:8px 12px;font-size:13px" oninput="renderBookingsTable()">
+            </div>
+          </div>
+          <div class="table-wrap" id="bookings-table-wrap"></div>
+        </div>
+      </div>
+
+      <!-- 설정 탭 -->
+      <div id="admin-tab-settings" style="display:none">
+
+        <!-- 오픈 시간 설정 -->
+        <div class="card">
+          <div class="section-title" style="margin-bottom:4px"><span class="icon">🕐</span> 예매 오픈 시간 설정</div>
+          <div class="section-desc">날짜별로 예매 오픈 시각을 설정합니다.</div>
+
+          <!-- 6/30 -->
+          <div style="margin-bottom:20px">
+            <div class="date-chip">📅 6월 30일 (1, 4, 7반)</div>
+            <div class="form-group">
+              <label class="form-label">오픈 일시</label>
+              <input class="form-control" id="open-time-630" type="datetime-local">
+            </div>
+            <div style="margin-top:10px">
+              <div class="toggle-wrap">
+                <div class="toggle-info">
+                  <div class="toggle-label">즉시 오픈</div>
+                  <div class="toggle-desc">설정 시각 무시하고 지금 바로 오픈</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="force-open-630" onchange="saveOpenSettings()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="toggle-wrap">
+                <div class="toggle-info">
+                  <div class="toggle-label">즉시 마감</div>
+                  <div class="toggle-desc">신청을 즉시 종료</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="force-close-630" onchange="saveOpenSettings()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7/1 -->
+          <div style="margin-bottom:20px">
+            <div class="date-chip">📅 7월 1일 (2, 5, 8반)</div>
+            <div class="form-group">
+              <label class="form-label">오픈 일시</label>
+              <input class="form-control" id="open-time-701" type="datetime-local">
+            </div>
+            <div style="margin-top:10px">
+              <div class="toggle-wrap">
+                <div class="toggle-info"><div class="toggle-label">즉시 오픈</div></div>
+                <label class="toggle">
+                  <input type="checkbox" id="force-open-701" onchange="saveOpenSettings()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="toggle-wrap">
+                <div class="toggle-info"><div class="toggle-label">즉시 마감</div></div>
+                <label class="toggle">
+                  <input type="checkbox" id="force-close-701" onchange="saveOpenSettings()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7/2 -->
+          <div>
+            <div class="date-chip">📅 7월 2일 (3, 6, 9반)</div>
+            <div class="form-group">
+              <label class="form-label">오픈 일시</label>
+              <input class="form-control" id="open-time-702" type="datetime-local">
+            </div>
+            <div style="margin-top:10px">
+              <div class="toggle-wrap">
+                <div class="toggle-info"><div class="toggle-label">즉시 오픈</div></div>
+                <label class="toggle">
+                  <input type="checkbox" id="force-open-702" onchange="saveOpenSettings()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="toggle-wrap">
+                <div class="toggle-info"><div class="toggle-label">즉시 마감</div></div>
+                <label class="toggle">
+                  <input type="checkbox" id="force-close-702" onchange="saveOpenSettings()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:20px">
+            <button class="btn btn-primary" onclick="saveOpenSettings(true)">💾 설정 저장</button>
+          </div>
+        </div>
+
+        <!-- 비밀번호 변경 -->
+        <div class="card">
+          <div class="section-title" style="margin-bottom:4px"><span class="icon">🔑</span> 관리자 비밀번호 변경</div>
+          <div class="section-desc">새 비밀번호는 4자 이상이어야 합니다.</div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">새 비밀번호</label>
+            <input class="form-control" id="new-password" type="password" placeholder="새 비밀번호 입력">
+          </div>
+          <div class="form-group" style="margin-bottom:16px">
+            <label class="form-label">비밀번호 확인</label>
+            <input class="form-control" id="new-password-confirm" type="password" placeholder="비밀번호 재입력">
+          </div>
+          <button class="btn btn-primary" onclick="changeAdminPassword()">비밀번호 변경</button>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===================== 신청 확인 모달 ===================== -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">신청 확인</div>
+    <div class="modal-desc">아래 내용으로 신청하시겠습니까?</div>
+    <div class="booking-summary" id="confirm-summary"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('confirm-modal')">취소</button>
+      <button class="btn btn-primary" id="btn-confirm-submit" onclick="submitBooking()">신청하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== 관리자 로그인 모달 ===================== -->
+<div class="modal-overlay" id="admin-login-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔐 관리자 로그인</div>
+    <div class="modal-desc">관리자 비밀번호를 입력하세요.</div>
+    <div class="form-group">
+      <label class="form-label">비밀번호</label>
+      <input class="form-control" id="admin-password-input" type="password" placeholder="비밀번호 입력"
+             onkeydown="if(event.key==='Enter')doAdminLogin()">
+    </div>
+    <div id="admin-login-error" style="margin-top:10px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('admin-login-modal')">취소</button>
+      <button class="btn btn-primary" onclick="doAdminLogin()">로그인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== 프로그램 수정 모달 ===================== -->
+<div class="modal-overlay" id="edit-program-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">프로그램 수정</div>
+    <input type="hidden" id="edit-prog-id">
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">프로그램명</label>
+      <input class="form-control" id="edit-prog-name" type="text">
+    </div>
+    <div class="form-grid" style="margin-bottom:12px">
+      <div class="form-group">
+        <label class="form-label">날짜</label>
+        <select class="form-control" id="edit-prog-date">
+          <option value="2025-06-30">6월 30일</option>
+          <option value="2025-07-01">7월 1일</option>
+          <option value="2025-07-02">7월 2일</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">정원</label>
+        <input class="form-control" id="edit-prog-capacity" type="number" min="1">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">대상 반 (쉼표 구분)</label>
+      <input class="form-control" id="edit-prog-classes" type="text">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('edit-program-modal')">취소</button>
+      <button class="btn btn-primary" onclick="updateProgram()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== JavaScript ===================== -->
+<script>
+// ========== 설정 ==========
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxFwRggptcIPSrXkpCPMx-etAYfkOj4EATRHXAct3Q90QRvU2yfhjODetPfXX89kUQ/exec';
+
+// ========== 상태 ==========
+const state = {
+  student: {
+    grade: '', classNum: '', studentNum: '', studentName: '',
+    programs: [], selectedProgramId: null,
+    openStatus: null, programDate: null
+  },
+  admin: {
+    token: localStorage.getItem('adminToken') || null,
+    bookings: [], programs: [], settings: {},
+    currentTab: 'dashboard'
+  }
+};
+
+let countdownTimer = null;
+let programRefreshTimer = null;
+
+// ========== API 헬퍼 ==========
+async function apiGet(params) {
+  const url = new URL(GAS_URL);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  const res = await fetch(url.toString());
+  return res.json();
+}
+
+async function apiPost(body) {
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+// ========== 로딩 ==========
+function showLoading(text = '잠시 기다려주세요...') {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading-overlay').classList.add('active');
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.remove('active');
+}
+
+// ========== 토스트 ==========
+function showToast(msg, type = 'info', duration = 3000) {
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'toastOut 0.3s ease forwards';
+    setTimeout(() => el.remove(), 300);
+  }, duration);
+}
+
+// ========== 모달 ==========
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ========== 뷰 전환 ==========
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function goHome() {
+  clearInterval(countdownTimer);
+  clearInterval(programRefreshTimer);
+  state.student.selectedProgramId = null;
+  document.getElementById('programs-section').style.display = 'none';
+  showView('student');
+}
+
+// ========== 반 선택 이벤트 ==========
+function onClassChange() {
+  const grade = document.getElementById('sel-grade').value;
+  const classNum = document.getElementById('sel-class').value;
+  state.student.grade = grade;
+  state.student.classNum = classNum;
+  // 반이 선택되면 날짜 안내
+  if (classNum) {
+    const dateMap = { 1:'6월 30일',2:'7월 1일',3:'7월 2일',4:'6월 30일',5:'7월 1일',6:'7월 2일',7:'6월 30일',8:'7월 1일',9:'7월 2일' };
+    const classDate = dateMap[parseInt(classNum)] || '';
+  }
+}
+
+// ========== 프로그램 불러오기 ==========
+async function loadPrograms() {
+  const grade = document.getElementById('sel-grade').value;
+  const classNum = document.getElementById('sel-class').value;
+  const studentNum = document.getElementById('inp-num').value;
+  const studentName = document.getElementById('inp-name').value.trim();
+
+  if (!grade || !classNum || !studentNum || !studentName) {
+    showToast('모든 항목을 입력해 주세요.', 'error'); return;
+  }
+  if (!/^[가-힣]{2,5}$/.test(studentName)) {
+    showToast('이름은 한글 2~5자로 입력해 주세요.', 'error'); return;
+  }
+  if (parseInt(studentNum) < 1 || parseInt(studentNum) > 40) {
+    showToast('번호는 1~40 사이로 입력해 주세요.', 'error'); return;
+  }
+
+  state.student.grade = grade;
+  state.student.classNum = classNum;
+  state.student.studentNum = studentNum;
+  state.student.studentName = studentName;
+
+  showLoading('프로그램 목록을 불러오는 중...');
+  try {
+    const classDateMap = {
+      1:'2025-06-30',2:'2025-07-01',3:'2025-07-02',
+      4:'2025-06-30',5:'2025-07-01',6:'2025-07-02',
+      7:'2025-06-30',8:'2025-07-01',9:'2025-07-02'
+    };
+    const programDate = classDateMap[parseInt(classNum)];
+    state.student.programDate = programDate;
+
+    // 오픈 여부 확인
+    const openRes = await apiGet({ action: 'checkOpenTime', date: programDate });
+    state.student.openStatus = openRes;
+
+    // 프로그램 목록
+    const progRes = await apiGet({ action: 'getPrograms', classNum });
+    state.student.programs = progRes.programs || [];
+
+    const dateLabels = {'2025-06-30':'6월 30일','2025-07-01':'7월 1일','2025-07-02':'7월 2일'};
+    const classGroups = {'2025-06-30':'1·4·7반','2025-07-01':'2·5·8반','2025-07-02':'3·6·9반'};
+
+    document.getElementById('class-info-bar').innerHTML =
+      `📅 <strong>${grade}학년 ${classNum}반</strong> — 체험학습 날짜: <strong>${dateLabels[programDate] || programDate}</strong> (${classGroups[programDate] || ''} 대상)`;
+
+    document.getElementById('programs-section').style.display = 'block';
+    renderProgramStatus();
+
+    // 주기적 새로고침 (오픈 후)
+    clearInterval(programRefreshTimer);
+    if (openRes.isOpen) {
+      programRefreshTimer = setInterval(async () => {
+        const r = await apiGet({ action: 'getPrograms', classNum });
+        state.student.programs = r.programs || [];
+        renderProgramList();
+      }, 15000);
+    }
+
+  } catch(e) {
+    showToast('서버 연결에 실패했습니다. GAS URL을 확인해 주세요.', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+function renderProgramStatus() {
+  const { openStatus, programDate } = state.student;
+  const countdownCard = document.getElementById('countdown-card');
+  const programListCard = document.getElementById('program-list-card');
+  const closedCard = document.getElementById('closed-card');
+
+  countdownCard.style.display = 'none';
+  programListCard.style.display = 'none';
+  closedCard.style.display = 'none';
+  clearInterval(countdownTimer);
+
+  if (!openStatus || !openStatus.success) {
+    showToast('오픈 시간 정보를 불러오지 못했습니다.', 'error'); return;
+  }
+
+  if (openStatus.isClosed) {
+    closedCard.style.display = 'block'; return;
+  }
+
+  if (openStatus.isOpen) {
+    programListCard.style.display = 'block';
+    renderProgramList(); return;
+  }
+
+  // 카운트다운
+  if (openStatus.openTime) {
+    countdownCard.style.display = 'block';
+    const openAt = new Date(openStatus.openTime);
+    document.getElementById('countdown-open-time').textContent =
+      `오픈 예정: ${openAt.toLocaleString('ko-KR', {month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}`;
+    startCountdown(openAt);
+  } else {
+    countdownCard.style.display = 'block';
+    document.getElementById('countdown-open-time').textContent = '오픈 시각이 아직 설정되지 않았습니다.';
+    document.getElementById('countdown-timer').style.display = 'none';
+  }
+}
+
+function startCountdown(openAt) {
+  document.getElementById('countdown-timer').style.display = 'flex';
+  clearInterval(countdownTimer);
+  function tick() {
+    const now = new Date();
+    const diff = openAt - now;
+    if (diff <= 0) {
+      clearInterval(countdownTimer);
+      showToast('예매가 오픈되었습니다!', 'success');
+      state.student.openStatus = { isOpen: true };
+      renderProgramStatus();
+      return;
+    }
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    document.getElementById('cd-h').textContent = String(h).padStart(2,'0');
+    document.getElementById('cd-m').textContent = String(m).padStart(2,'0');
+    document.getElementById('cd-s').textContent = String(s).padStart(2,'0');
+  }
+  tick();
+  countdownTimer = setInterval(tick, 1000);
+}
+
+function renderProgramList() {
+  const { programs, selectedProgramId } = state.student;
+  const container = document.getElementById('program-list');
+  if (!programs.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">해당 반의 프로그램이 없습니다.</div></div>';
+    return;
+  }
+
+  container.innerHTML = programs.map(p => {
+    const pct = Math.round((p.bookedCount / p.capacity) * 100);
+    const progressClass = pct < 60 ? 'green' : pct < 85 ? 'yellow' : 'red';
+    const isFull = p.isFull;
+    const isSelected = selectedProgramId === p.id;
+
+    let badgeHtml = '';
+    if (isFull) badgeHtml = '<span class="badge badge-full">마감</span>';
+    else if (pct >= 80) badgeHtml = '<span class="badge badge-soon">마감 임박</span>';
+    else badgeHtml = '<span class="badge badge-open">신청 가능</span>';
+
+    return `
+      <div class="program-card ${isFull ? 'disabled' : ''} ${isSelected ? 'selected' : ''}"
+           id="pc-${p.id}"
+           onclick="${!isFull ? `selectProgram('${p.id}')` : ''}">
+        <div class="program-card-header">
+          <div class="program-name">${escHtml(p.name)}</div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+            ${badgeHtml}
+            <div class="program-check">${isSelected ? '✓' : ''}</div>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-info">
+            <span>신청 현황</span>
+            <span>${p.bookedCount} / ${p.capacity}명 (${pct}%)</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill ${progressClass}" style="width:${Math.min(pct,100)}%"></div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('btn-submit').disabled = !selectedProgramId;
+}
+
+function selectProgram(id) {
+  state.student.selectedProgramId = id;
+  renderProgramList();
+}
+
+// ========== 신청 모달 ==========
+function openConfirmModal() {
+  if (!state.student.selectedProgramId) return;
+  const prog = state.student.programs.find(p => p.id === state.student.selectedProgramId);
+  const { grade, classNum, studentNum, studentName } = state.student;
+  const dateLabels = {'2025-06-30':'2025년 6월 30일','2025-07-01':'2025년 7월 1일','2025-07-02':'2025년 7월 2일'};
+
+  document.getElementById('confirm-summary').innerHTML = `
+    <div class="booking-summary-row"><span class="booking-summary-key">학생</span><span class="booking-summary-value">${grade}학년 ${classNum}반 ${studentNum}번 ${escHtml(studentName)}</span></div>
+    <div class="booking-summary-row"><span class="booking-summary-key">프로그램</span><span class="booking-summary-value">${escHtml(prog.name)}</span></div>
+    <div class="booking-summary-row"><span class="booking-summary-key">날짜</span><span class="booking-summary-value">${dateLabels[prog.date] || prog.date}</span></div>
+    <div class="booking-summary-row"><span class="booking-summary-key">잔여 정원</span><span class="booking-summary-value">${prog.capacity - prog.bookedCount}명</span></div>
+  `;
+  openModal('confirm-modal');
+}
+
+async function submitBooking() {
+  const { grade, classNum, studentNum, studentName, selectedProgramId } = state.student;
+  const btn = document.getElementById('btn-confirm-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    const res = await apiPost({
+      action: 'submitBooking',
+      grade, classNum, studentNum, studentName, programId: selectedProgramId
+    });
+
+    closeModal('confirm-modal');
+
+    if (res.success) {
+      showCompleteView(res.booking);
+    } else {
+      showToast(res.message || '신청에 실패했습니다.', 'error');
+      if (res.alreadyBooked) {
+        // 신청 목록 갱신
+        const r = await apiGet({ action: 'getPrograms', classNum });
+        state.student.programs = r.programs || [];
+        renderProgramList();
+      }
+    }
+  } catch(e) {
+    showToast('서버 오류가 발생했습니다.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '신청하기';
+  }
+}
+
+function showCompleteView(booking) {
+  const dateLabels = {'2025-06-30':'2025년 6월 30일','2025-07-01':'2025년 7월 1일','2025-07-02':'2025년 7월 2일'};
+  const bookedAt = booking.bookedAt ? new Date(booking.bookedAt).toLocaleString('ko-KR') : '';
+  document.getElementById('complete-summary').innerHTML = `
+    <div class="booking-summary-row"><span class="booking-summary-key">학생</span><span class="booking-summary-value">${state.student.grade}학년 ${state.student.classNum}반 ${state.student.studentNum}번 ${escHtml(state.student.studentName)}</span></div>
+    <div class="booking-summary-row"><span class="booking-summary-key">프로그램</span><span class="booking-summary-value">${escHtml(booking.programName || booking.programId)}</span></div>
+    <div class="booking-summary-row"><span class="booking-summary-key">날짜</span><span class="booking-summary-value">${dateLabels[booking.programDate] || booking.programDate || ''}</span></div>
+    <div class="booking-summary-row"><span class="booking-summary-key">신청 시각</span><span class="booking-summary-value">${bookedAt}</span></div>
+  `;
+  clearInterval(countdownTimer);
+  clearInterval(programRefreshTimer);
+  showView('complete');
+}
+
+// ========== 신청 조회 ==========
+async function lookupBooking() {
+  const grade = document.getElementById('lk-grade').value;
+  const classNum = document.getElementById('lk-class').value;
+  const studentNum = document.getElementById('lk-num').value;
+  const resultEl = document.getElementById('lookup-result');
+
+  if (!grade || !classNum || !studentNum) {
+    showToast('학년·반·번호를 모두 입력해 주세요.', 'error'); return;
+  }
+
+  resultEl.innerHTML = '<div class="alert alert-info"><span class="alert-icon">ℹ️</span>조회 중...</div>';
+
+  try {
+    const res = await apiGet({ action: 'checkBooking', grade, classNum, studentNum });
+    if (!res.success) {
+      resultEl.innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span>${escHtml(res.message)}</div>`; return;
+    }
+    if (!res.found) {
+      resultEl.innerHTML = `<div class="alert alert-warning"><span class="alert-icon">⚠️</span>신청 내역이 없습니다.</div>`; return;
+    }
+    const b = res.booking;
+    const dateLabels = {'2025-06-30':'6월 30일','2025-07-01':'7월 1일','2025-07-02':'7월 2일'};
+    resultEl.innerHTML = `
+      <div class="alert alert-success">
+        <span class="alert-icon">✅</span>
+        <div>
+          <div style="font-weight:700;margin-bottom:4px">신청 완료</div>
+          <div>${b.grade}학년 ${b.classNum}반 ${b.studentNum}번 ${escHtml(b.studentName)}</div>
+          <div style="margin-top:4px;font-size:13px">${escHtml(b.programName)} (${dateLabels[b.programDate]||b.programDate})</div>
+        </div>
+      </div>`;
+  } catch(e) {
+    resultEl.innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span>서버 오류가 발생했습니다.</div>`;
+  }
+}
+
+// ========== 관리자 로그인 ==========
+function openAdminModal() {
+  if (state.admin.token) {
+    loadAdminData();
+    showView('admin');
+    return;
+  }
+  document.getElementById('admin-password-input').value = '';
+  document.getElementById('admin-login-error').innerHTML = '';
+  openModal('admin-login-modal');
+  setTimeout(() => document.getElementById('admin-password-input').focus(), 300);
+}
+
+async function doAdminLogin() {
+  const pw = document.getElementById('admin-password-input').value;
+  if (!pw) return;
+  const errEl = document.getElementById('admin-login-error');
+  errEl.innerHTML = '<div class="alert alert-info"><span class="alert-icon">ℹ️</span>로그인 중...</div>';
+
+  try {
+    const res = await apiPost({ action: 'adminLogin', password: pw });
+    if (res.success) {
+      state.admin.token = res.token;
+      localStorage.setItem('adminToken', res.token);
+      closeModal('admin-login-modal');
+      showToast('관리자로 로그인되었습니다.', 'success');
+      loadAdminData();
+      showView('admin');
+    } else {
+      errEl.innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span>${escHtml(res.message)}</div>`;
+    }
+  } catch(e) {
+    errEl.innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span>서버 오류가 발생했습니다.</div>`;
+  }
+}
+
+function adminLogout() {
+  state.admin.token = null;
+  localStorage.removeItem('adminToken');
+  showView('student');
+  showToast('로그아웃되었습니다.', 'info');
+}
+
+// ========== 관리자 탭 ==========
+function switchAdminTab(tab) {
+  ['dashboard','programs','bookings','settings'].forEach(t => {
+    document.getElementById('admin-tab-' + t).style.display = t === tab ? 'block' : 'none';
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+  });
+  state.admin.currentTab = tab;
+}
+
+// ========== 관리자 데이터 로드 ==========
+async function loadAdminData() {
+  if (!state.admin.token) return;
+  showLoading('데이터를 불러오는 중...');
+  try {
+    const [bookingsRes, programsRes, settingsRes] = await Promise.all([
+      apiGet({ action: 'getBookings', token: state.admin.token }),
+      apiGet({ action: 'getPrograms' }),
+      apiGet({ action: 'getSettings', token: state.admin.token })
+    ]);
+
+    if (bookingsRes.success === false && bookingsRes.message === '인증이 필요합니다.') {
+      adminLogout(); hideLoading();
+      showToast('세션이 만료되었습니다. 다시 로그인해 주세요.', 'error'); return;
+    }
+
+    state.admin.bookings = bookingsRes.bookings || [];
+    state.admin.programs = programsRes.programs || [];
+    state.admin.settings = settingsRes.settings || {};
+
+    renderDashboard();
+    renderAdminPrograms();
+    renderBookingsTable();
+    renderSettingsForm();
+    populateManualProgramSelect();
+  } catch(e) {
+    showToast('데이터 로드 실패. GAS URL을 확인해 주세요.', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// ========== 대시보드 ==========
+function renderDashboard() {
+  const { bookings, programs } = state.admin;
+  const total = bookings.length;
+  const prog = programs.length;
+
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">전체 신청 수</div></div>
+    <div class="stat-card"><div class="stat-num">${prog}</div><div class="stat-label">총 프로그램 수</div></div>
+  `;
+
+  // 프로그램별 현황
+  const statsEl = document.getElementById('program-stats-list');
+  if (!programs.length) {
+    statsEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">프로그램이 없습니다.</div></div>';
+  } else {
+    const dateLabels = {'2025-06-30':'6/30','2025-07-01':'7/1','2025-07-02':'7/2'};
+    const countMap = {};
+    bookings.forEach(b => { countMap[b.programId] = (countMap[b.programId]||0)+1; });
+
+    statsEl.innerHTML = programs.map(p => {
+      const cnt = countMap[p.id] || 0;
+      const cap = parseInt(p.capacity);
+      const pct = Math.round((cnt/cap)*100);
+      const pc = pct < 60 ? 'green' : pct < 85 ? 'yellow' : 'red';
+      return `
+        <div style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="font-size:13px;font-weight:600;flex:1;padding-right:12px">${escHtml(p.name)}</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+              <span class="tag">${dateLabels[p.date]||p.date}</span>
+              <span style="font-size:12px;color:var(--text-secondary)">${cnt}/${cap}</span>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill ${pc}" style="width:${Math.min(pct,100)}%"></div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // 테이블
+  const tableWrap = document.getElementById('dashboard-table-wrap');
+  if (!bookings.length) {
+    tableWrap.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">신청 내역이 없습니다.</div></div>';
+  } else {
+    tableWrap.innerHTML = `
+      <table class="data-table">
+        <thead><tr>
+          <th>학년</th><th>반</th><th>번호</th><th>이름</th><th>프로그램</th><th>신청시각</th>
+        </tr></thead>
+        <tbody>${bookings.slice(0,20).map(b => `
+          <tr>
+            <td>${b.grade}학년</td><td>${b.classNum}반</td><td>${b.studentNum}번</td>
+            <td>${escHtml(b.studentName)}</td>
+            <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis">${escHtml(b.programName||b.programId)}</td>
+            <td>${b.bookedAt ? new Date(b.bookedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      ${bookings.length>20?`<div style="padding:12px;text-align:center;font-size:13px;color:var(--text-muted)">+ ${bookings.length-20}건 더 있음 (신청 내역 탭에서 전체 확인)</div>`:''}`;
+  }
+}
+
+// ========== 신청 내역 테이블 ==========
+function renderBookingsTable() {
+  const { bookings } = state.admin;
+  const q = (document.getElementById('search-booking')||{}).value||'';
+  const filtered = q ? bookings.filter(b => b.studentName && b.studentName.includes(q)) : bookings;
+  const tableWrap = document.getElementById('bookings-table-wrap');
+
+  if (!filtered.length) {
+    tableWrap.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">신청 내역이 없습니다.</div></div>';
+    return;
+  }
+
+  tableWrap.innerHTML = `
+    <table class="data-table">
+      <thead><tr>
+        <th>학년</th><th>반</th><th>번호</th><th>이름</th><th>프로그램</th><th>신청시각</th><th>관리</th>
+      </tr></thead>
+      <tbody>${filtered.map(b => `
+        <tr>
+          <td>${b.grade}학년</td><td>${b.classNum}반</td><td>${b.studentNum}번</td>
+          <td>${escHtml(b.studentName)}</td>
+          <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:normal;word-break:keep-all;font-size:12px">${escHtml(b.programName||b.programId)}</td>
+          <td style="font-size:12px">${b.bookedAt ? new Date(b.bookedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}</td>
+          <td><button class="btn btn-danger btn-sm btn-icon" onclick="cancelBooking('${b.id}','${escHtml(b.studentName)}')" title="취소">✕</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function cancelBooking(bookingId, name) {
+  if (!confirm(`${name} 학생의 신청을 취소하시겠습니까?`)) return;
+  showLoading('신청 취소 중...');
+  try {
+    const res = await apiPost({ action: 'cancelBooking', token: state.admin.token, bookingId });
+    if (res.success) {
+      showToast('신청이 취소되었습니다.', 'success');
+      await loadAdminData();
+    } else {
+      showToast(res.message, 'error');
+    }
+  } catch(e) {
+    showToast('서버 오류', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// ========== CSV 내보내기 ==========
+function exportCSV() {
+  const { bookings } = state.admin;
+  if (!bookings.length) { showToast('내보낼 데이터가 없습니다.', 'error'); return; }
+
+  const headers = ['학년','반','번호','이름','프로그램','날짜','신청시각'];
+  const rows = bookings.map(b => [
+    b.grade+'학년', b.classNum+'반', b.studentNum+'번', b.studentName,
+    b.programName||b.programId, b.programDate||'', b.bookedAt||''
+  ]);
+
+  const bom = '\uFEFF';
+  const csv = bom + [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `체험학습신청_${new Date().toLocaleDateString('ko-KR')}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('CSV 파일이 다운로드되었습니다.', 'success');
+}
+
+// ========== 관리자 프로그램 관리 ==========
+function renderAdminPrograms() {
+  const { programs, bookings } = state.admin;
+  const el = document.getElementById('admin-program-list');
+  const dateLabels = {'2025-06-30':'6월 30일','2025-07-01':'7월 1일','2025-07-02':'7월 2일'};
+  const countMap = {};
+  bookings.forEach(b => { countMap[b.programId] = (countMap[b.programId]||0)+1; });
+
+  if (!programs.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">프로그램이 없습니다.</div></div>';
+    return;
+  }
+
+  el.innerHTML = programs.map(p => {
+    const cnt = countMap[p.id]||0;
+    return `
+      <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600;margin-bottom:4px">${escHtml(p.name)}</div>
+            <div style="font-size:12px;color:var(--text-secondary)">${dateLabels[p.date]||p.date} | ${p.targetClasses}반 | 정원 ${p.capacity}명 | 신청 ${cnt}명</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn btn-ghost btn-sm" onclick="openEditProgram('${p.id}')">수정</button>
+            <button class="btn btn-danger btn-sm" onclick="removeProgram('${p.id}','${escHtml(p.name)}')">삭제</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function populateManualProgramSelect() {
+  const { programs } = state.admin;
+  const sel = document.getElementById('manual-program');
+  const dateLabels = {'2025-06-30':'6/30','2025-07-01':'7/1','2025-07-02':'7/2'};
+  sel.innerHTML = programs.map(p =>
+    `<option value="${p.id}">[${dateLabels[p.date]||p.date}] ${escHtml(p.name)}</option>`
+  ).join('');
+}
+
+async function addProgram() {
+  const name = document.getElementById('new-prog-name').value.trim();
+  const date = document.getElementById('new-prog-date').value;
+  const capacity = document.getElementById('new-prog-capacity').value;
+  const targetClasses = document.getElementById('new-prog-classes').value.trim();
+
+  if (!name || !date || !capacity || !targetClasses) {
+    showToast('모든 항목을 입력해 주세요.', 'error'); return;
+  }
+
+  showLoading('프로그램 추가 중...');
+  try {
+    const res = await apiPost({
+      action: 'saveProgram', token: state.admin.token,
+      program: { name, date, capacity: parseInt(capacity), targetClasses }
+    });
+    if (res.success) {
+      showToast(res.message, 'success');
+      document.getElementById('new-prog-name').value = '';
+      document.getElementById('new-prog-capacity').value = '';
+      document.getElementById('new-prog-classes').value = '';
+      await loadAdminData();
+    } else {
+      showToast(res.message, 'error');
+    }
+  } catch(e) {
+    showToast('서버 오류', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+function openEditProgram(id) {
+  const prog = state.admin.programs.find(p => p.id === id);
+  if (!prog) return;
+  document.getElementById('edit-prog-id').value = prog.id;
+  document.getElementById('edit-prog-name').value = prog.name;
+  document.getElementById('edit-prog-date').value = prog.date;
+  document.getElementById('edit-prog-capacity').value = prog.capacity;
+  document.getElementById('edit-prog-classes').value = prog.targetClasses;
+  openModal('edit-program-modal');
+}
+
+async function updateProgram() {
+  const id = document.getElementById('edit-prog-id').value;
+  const name = document.getElementById('edit-prog-name').value.trim();
+  const date = document.getElementById('edit-prog-date').value;
+  const capacity = document.getElementById('edit-prog-capacity').value;
+  const targetClasses = document.getElementById('edit-prog-classes').value.trim();
+
+  if (!name || !date || !capacity || !targetClasses) {
+    showToast('모든 항목을 입력해 주세요.', 'error'); return;
+  }
+
+  showLoading('저장 중...');
+  try {
+    const res = await apiPost({
+      action: 'saveProgram', token: state.admin.token,
+      program: { id, name, date, capacity: parseInt(capacity), targetClasses }
+    });
+    if (res.success) {
+      closeModal('edit-program-modal');
+      showToast(res.message, 'success');
+      await loadAdminData();
+    } else {
+      showToast(res.message, 'error');
+    }
+  } catch(e) {
+    showToast('서버 오류', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function removeProgram(id, name) {
+  if (!confirm(`"${name}" 프로그램을 삭제하시겠습니까?`)) return;
+  showLoading('삭제 중...');
+  try {
+    const res = await apiPost({ action: 'deleteProgram', token: state.admin.token, programId: id });
+    if (res.success) {
+      showToast(res.message, 'success');
+      await loadAdminData();
+    } else if (res.needConfirm) {
+      hideLoading();
+      if (confirm(res.message)) {
+        showLoading('강제 삭제 중...');
+        const res2 = await apiPost({ action: 'deleteProgram', token: state.admin.token, programId: id, force: true });
+        if (res2.success) { showToast(res2.message, 'success'); await loadAdminData(); }
+        else showToast(res2.message, 'error');
+      }
+    } else {
+      showToast(res.message, 'error');
+    }
+  } catch(e) {
+    showToast('서버 오류', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// ========== 수동 신청 ==========
+async function submitManual() {
+  const grade = document.getElementById('manual-grade').value;
+  const classNum = document.getElementById('manual-class').value;
+  const studentNum = document.getElementById('manual-num').value;
+  const studentName = document.getElementById('manual-name').value.trim();
+  const programId = document.getElementById('manual-program').value;
+
+  if (!grade || !classNum || !studentNum || !studentName || !programId) {
+    showToast('모든 항목을 입력해 주세요.', 'error'); return;
+  }
+
+  showLoading('수동 신청 추가 중...');
+  try {
+    const res = await apiPost({ action: 'manualBooking', token: state.admin.token, grade, classNum, studentNum, studentName, programId });
+    if (res.success) {
+      showToast(res.message, 'success');
+      await loadAdminData();
+    } else if (res.needConfirm) {
+      hideLoading();
+      if (confirm(res.message + '\n계속 진행하시겠습니까?')) {
+        showLoading('추가 중...');
+        const res2 = await apiPost({ action: 'manualBooking', token: state.admin.token, grade, classNum, studentNum, studentName, programId, force: true });
+        if (res2.success) { showToast(res2.message, 'success'); await loadAdminData(); }
+        else showToast(res2.message, 'error');
+      }
+    } else {
+      showToast(res.message, 'error');
+    }
+  } catch(e) {
+    showToast('서버 오류', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// ========== 설정 ==========
+function renderSettingsForm() {
+  const s = state.admin.settings;
+  const toLocalDatetime = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d - offset).toISOString().slice(0,16);
+  };
+
+  document.getElementById('open-time-630').value = toLocalDatetime(s['openTime_2025-06-30']);
+  document.getElementById('open-time-701').value = toLocalDatetime(s['openTime_2025-07-01']);
+  document.getElementById('open-time-702').value = toLocalDatetime(s['openTime_2025-07-02']);
+  document.getElementById('force-open-630').checked = s['forceOpen_2025-06-30'] === 'true';
+  document.getElementById('force-open-701').checked = s['forceOpen_2025-07-01'] === 'true';
+  document.getElementById('force-open-702').checked = s['forceOpen_2025-07-02'] === 'true';
+  document.getElementById('force-close-630').checked = s['forceClose_2025-06-30'] === 'true';
+  document.getElementById('force-close-701').checked = s['forceClose_2025-07-01'] === 'true';
+  document.getElementById('force-close-702').checked = s['forceClose_2025-07-02'] === 'true';
+}
+
+async function saveOpenSettings(showMsg = false) {
+  const toIso = (val) => val ? new Date(val).toISOString() : '';
+  const settings = {
+    'openTime_2025-06-30': toIso(document.getElementById('open-time-630').value),
+    'openTime_2025-07-01': toIso(document.getElementById('open-time-701').value),
+    'openTime_2025-07-02': toIso(document.getElementById('open-time-702').value),
+    'forceOpen_2025-06-30': document.getElementById('force-open-630').checked ? 'true' : 'false',
+    'forceOpen_2025-07-01': document.getElementById('force-open-701').checked ? 'true' : 'false',
+    'forceOpen_2025-07-02': document.getElementById('force-open-702').checked ? 'true' : 'false',
+    'forceClose_2025-06-30': document.getElementById('force-close-630').checked ? 'true' : 'false',
+    'forceClose_2025-07-01': document.getElementById('force-close-701').checked ? 'true' : 'false',
+    'forceClose_2025-07-02': document.getElementById('force-close-702').checked ? 'true' : 'false',
+  };
+
+  if (showMsg) showLoading('설정 저장 중...');
+  try {
+    const res = await apiPost({ action: 'saveSettings', token: state.admin.token, settings });
+    if (res.success && showMsg) showToast(res.message, 'success');
+    else if (!res.success) showToast(res.message, 'error');
+  } catch(e) {
+    if (showMsg) showToast('서버 오류', 'error');
+  } finally {
+    if (showMsg) hideLoading();
+  }
+}
+
+async function changeAdminPassword() {
+  const pw = document.getElementById('new-password').value;
+  const pw2 = document.getElementById('new-password-confirm').value;
+  if (!pw || !pw2) { showToast('비밀번호를 입력해 주세요.', 'error'); return; }
+  if (pw !== pw2) { showToast('비밀번호가 일치하지 않습니다.', 'error'); return; }
+  if (pw.length < 4) { showToast('비밀번호는 4자 이상이어야 합니다.', 'error'); return; }
+
+  showLoading('비밀번호 변경 중...');
+  try {
+    const res = await apiPost({ action: 'changePassword', token: state.admin.token, newPassword: pw });
+    if (res.success) {
+      showToast(res.message, 'success');
+      document.getElementById('new-password').value = '';
+      document.getElementById('new-password-confirm').value = '';
+    } else {
+      showToast(res.message, 'error');
+    }
+  } catch(e) {
+    showToast('서버 오류', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// ========== 유틸 ==========
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ========== 초기화 ==========
+document.addEventListener('DOMContentLoaded', () => {
+  // 모달 외부 클릭 닫기
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+  });
+
+  // 관리자로 이미 로그인된 경우 체크
+  if (window.location.hash === '#admin' && state.admin.token) {
+    loadAdminData();
+    showView('admin');
+  }
+});
+</script>
+</body>
+</html>
