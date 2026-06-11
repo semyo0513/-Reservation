@@ -22,13 +22,6 @@ const TOKEN_EXPIRE_HOURS = 4;                       // 세션 토큰 만료 시�
 // =====================================================================
 
 function doGet(e) {
-  // 편집기에서 직접 실행하면 e 가 undefined → 안전하게 처리
-  if (!e || !e.parameter) {
-    return jsonResponse({
-      success: false,
-      message: 'doGet은 웹 앱으로 배포 후 브라우저/fetch로 호출해야 합니다. 편집기에서 직접 실행하지 마세요.'
-    });
-  }
   const params = e.parameter;
   const action = params.action || '';
   try {
@@ -39,7 +32,7 @@ function doGet(e) {
       case 'getBookings':    result = getBookings(params); break;
       case 'getSettings':    result = getSettings(params); break;
       case 'checkBooking':   result = checkBooking(params); break;
-      default: result = { success: false, message: 'action 파라미터가 없거나 잘못되었습니다.' };
+      default: result = { success: false, message: '알 수 없는 액션입니다.' };
     }
     return jsonResponse(result);
   } catch (err) {
@@ -48,18 +41,11 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  // 편집기에서 직접 실행하면 e 가 undefined → 안전하게 처리
-  if (!e) {
-    return jsonResponse({
-      success: false,
-      message: 'doPost는 웹 앱으로 배포 후 POST 요청으로 호출해야 합니다.'
-    });
-  }
   let params;
   try {
     params = JSON.parse(e.postData.contents);
   } catch (_) {
-    params = (e && e.parameter) ? e.parameter : {};
+    params = e.parameter;
   }
   const action = params.action || '';
   try {
@@ -73,7 +59,7 @@ function doPost(e) {
       case 'cancelBooking':   result = cancelBooking(params); break;
       case 'manualBooking':   result = manualBooking(params); break;
       case 'changePassword':  result = changePassword(params); break;
-      default: result = { success: false, message: 'action 파라미터가 없거나 잘못되었습니다.' };
+      default: result = { success: false, message: '알 수 없는 액션입니다.' };
     }
     return jsonResponse(result);
   } catch (err) {
