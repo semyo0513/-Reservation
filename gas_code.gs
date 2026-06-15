@@ -215,9 +215,75 @@ function getAllData(sheetName) {
   const headers = rows[0];
   return rows.slice(1).map(row => {
     const obj = {};
-    headers.forEach((h, i) => { obj[h] = row[i]; });
+    headers.forEach((h, i) => {
+      const val = row[i];
+      if (val instanceof Date) {
+        if (h === 'date' || h === 'programDate') {
+          obj[h] = formatDate(val);
+        } else {
+          obj[h] = formatDateTime(val);
+        }
+      } else {
+        obj[h] = val;
+      }
+    });
     return obj;
   });
+}
+
+// =====================================================================
+// 날짜 포맷 헬퍼 (Google Sheets Date 객체 → 'YYYY-MM-DD' 문자열)
+// =====================================================================
+
+function formatDate(d) {
+  if (!d) return '';
+  if (d instanceof Date) {
+    try {
+      const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+      return Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+    } catch (e) {
+      try {
+        return Utilities.formatDate(d, 'Asia/Seoul', 'yyyy-MM-dd');
+      } catch (e2) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+      }
+    }
+  }
+  
+  let str = String(d).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    return str.substring(0, 10);
+  }
+  
+  try {
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime())) {
+      const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+      return Utilities.formatDate(parsed, tz, 'yyyy-MM-dd');
+    }
+  } catch(e) {}
+  
+  return str.substring(0, 10);
+}
+
+function formatDateTime(d) {
+  if (!d) return '';
+  if (d instanceof Date) {
+    try {
+      const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+      return Utilities.formatDate(d, tz, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+    } catch(e) {
+      try {
+        return Utilities.formatDate(d, 'Asia/Seoul', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+      } catch(e2) {
+        return d.toISOString();
+      }
+    }
+  }
+  return String(d);
 }
 
 function appendRow(sheetName, rowObj) {
@@ -342,7 +408,7 @@ function getPrograms(params) {
   const result = filtered.map(p => ({
     id: p.id,
     name: p.name,
-    date: p.date,
+    date: formatDate(p.date), // Date 객체 → 'YYYY-MM-DD' 문자열로 변환
     targetClasses: p.targetClasses,
     capacity: Number(p.capacity),
     bookedCount: countMap[p.id] || 0,
@@ -414,24 +480,31 @@ function deleteProgram(params) {
 // =====================================================================
 
 function checkOpenTime(params) {
-  const { date } = params;
+  // date 를 반드시 'YYYY-MM-DD' 문자열로 정규화
+  const date = formatDate(params.date);
   if (!date) return { success: false, message: 'date 파라미터가 필요합니다.' };
 
   const openTimeStr = getSetting('openTime_' + date);
-  const forceOpen = getSetting('forceOpen_' + date);
-  const forceClose = getSetting('forceClose_' + date);
+  const forceOpen   = getSetting('forceOpen_'  + date);
+  const forceClose  = getSetting('forceClose_' + date);
 
-  if (forceClose === 'true') {
+  const isForceClose = forceClose === true || forceClose === 'true' || String(forceClose).toLowerCase() === 'true';
+  const isForceOpen  = forceOpen === true || forceOpen === 'true' || String(forceOpen).toLowerCase() === 'true';
+
+  if (isForceClose) {
     return { success: true, isOpen: false, isClosed: true, message: '예매가 마감되었습니다.' };
   }
-  if (forceOpen === 'true') {
+  if (isForceOpen) {
     return { success: true, isOpen: true };
   }
-  if (!openTimeStr) {
+  if (!openTimeStr || String(openTimeStr).trim() === '') {
     return { success: true, isOpen: false, openTime: null, message: '오픈 시간이 설정되지 않았습니다.' };
   }
 
   const openTime = new Date(openTimeStr);
+  if (isNaN(openTime.getTime())) {
+    return { success: true, isOpen: false, openTime: null, message: '오픈 시간 형식이 올바르지 않습니다.' };
+  }
   const now = new Date();
   const isOpen = now >= openTime;
 
@@ -466,9 +539,27 @@ function submitBooking(params) {
   const targetProgram = programs.find(p => p.id === programId);
   if (!targetProgram) return { success: false, message: '존재하지 않는 프로그램입니다.' };
 
-  const openCheck = checkOpenTime({ date: targetProgram.date });
-  if (!openCheck.isOpen) {
-    return { success: false, message: '아직 예매 오픈 전입니다.' };
+  const classDateMap = {
+    '1': '2025-06-30', '4': '2025-06-30', '7': '2025-06-30',
+    '2': '2025-07-01', '5': '2025-07-01', '8': '2025-07-01',
+    '3': '2025-07-02', '6': '2025-07-02', '9': '2025-07-02'
+  };
+  const expectedDate = classDateMap[String(classNum)];
+  const programDate = formatDate(targetProgram.date);
+
+  const openCheckProgram = checkOpenTime({ date: programDate });
+  let isOpen = openCheckProgram.isOpen;
+
+  // 2중 검사: 타임존 어긋남이나 학급 매핑 날짜 불일치 방지
+  if (!isOpen && expectedDate && expectedDate !== programDate) {
+    const openCheckExpected = checkOpenTime({ date: expectedDate });
+    if (openCheckExpected.isOpen) {
+      isOpen = true;
+    }
+  }
+
+  if (!isOpen) {
+    return { success: false, message: '아직 예매 오픈 전입니다. (date: ' + programDate + ', forceOpen 확인 필요)' };
   }
 
   // LockService로 동시성 제어
@@ -521,7 +612,7 @@ function submitBooking(params) {
       booking: {
         ...newBooking,
         programName: targetProgram.name,
-        programDate: targetProgram.date
+        programDate: formatDate(targetProgram.date) // Date 객체 방지
       }
     };
   } finally {
